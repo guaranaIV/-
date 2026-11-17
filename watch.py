@@ -16,7 +16,12 @@ AMIAMI_KEYWORDS = [
     "ユニオンアリーナ",
 ]
 
-# ▼ 3. 共通の除外ワード（スタートデッキは外し、アイドルマスターを追加）
+# ▼ 3. ヨドバシカメラの監視URL（トレカカテゴリー）
+YODOBASHI_URLS = [
+    "https://www.yodobashi.com/category/141001/141651/141662/",
+]
+
+# ▼ 4. 共通の除外ワード（スタートデッキは通知・アイドルマスターは除外）
 EXCLUDE_WORDS = [
     "ウエハース", "グミ", "チョコ", "スナック", "Tシャツ", "タオル", "マイナンバー", "ギフト",
     "スリーブ", "プレイマット", "ストレージ", "デッキケース",
@@ -32,7 +37,8 @@ def send_discord(message):
 
 def main():
     headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
     }
     items = []
 
@@ -68,7 +74,7 @@ def main():
 
     # ② あみあみ公式検索APIの巡回
     amiami_headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": headers["User-Agent"],
         "X-User-Key": "amiami_dev",
         "Referer": "https://slist.amiami.jp/"
     }
@@ -97,6 +103,37 @@ def main():
                         items.append(entry)
         except Exception as e:
             print(f"AmiAmi API Error ({kw}): {e}")
+
+    # ③ ヨドバシカメラの巡回（購入・予約可能な商品のみ抽出）
+    sold_out_words = ["販売休止中", "予定数の販売を終了", "在庫なし", "販売終了", "お取り寄せ"]
+    for url in YODOBASHI_URLS:
+        try:
+            res = requests.get(url, headers=headers, timeout=15)
+            res.encoding = res.apparent_encoding
+            soup = BeautifulSoup(res.text, "html.parser")
+
+            for box in soup.select(".srcResultItem_block, .pListBlock"):
+                full_text = box.get_text(" ", strip=True)
+                # 売り切れ系文言が含まれていたらスキップ（＝買える商品だけ通す）
+                if any(so in full_text for so in sold_out_words):
+                    continue
+                if any(ng in full_text for ng in EXCLUDE_WORDS):
+                    continue
+
+                a = box.find("a", href=True)
+                if a:
+                    href = a["href"]
+                    if href.startswith("/"):
+                        href = "https://www.yodobashi.com" + href
+                    # 商品名を取得
+                    name_el = box.select_one(".pName, .js_sltGoodsName")
+                    name = name_el.get_text(" ", strip=True) if name_el else a.get_text(" ", strip=True)
+                    if name and "/product/" in href:
+                        entry = f"[ヨドバシ] {name} ({href})"
+                        if entry not in items:
+                            items.append(entry)
+        except Exception as e:
+            print(f"Yodobashi Error ({url}): {e}")
 
     if not items:
         return
