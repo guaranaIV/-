@@ -16,6 +16,13 @@ AMIAMI_KEYWORDS = [
     "ユニオンアリーナ",
 ]
 
+# ▼ 3. 共通の除外ワード（スタートデッキは外し、アイドルマスターを追加）
+EXCLUDE_WORDS = [
+    "ウエハース", "グミ", "チョコ", "スナック", "Tシャツ", "タオル", "マイナンバー", "ギフト",
+    "スリーブ", "プレイマット", "ストレージ", "デッキケース",
+    "アイドルマスター",
+]
+
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 CACHE_FILE = "last_data.txt"
 
@@ -29,7 +36,6 @@ def main():
     }
     items = []
 
-    # ▼ イオン用キーワード：「パック」「カード」「BOX」を外して作品名だけに限定
     aeon_keywords = [
         "ポケモンカード", "ポケカ", "拡張パック", "強化拡張パック", "ハイクラスパック",
         "ワンピースカード", "ONE PIECEカード",
@@ -40,8 +46,6 @@ def main():
         "デュエル・マスターズ", "デュエマ",
         "デジモンカード",
     ]
-    # ▼ 念のための除外ワード（食玩・アパレル・雑貨など）
-    exclude_words = ["ウエハース", "グミ", "チョコ", "スナック", "Tシャツ", "タオル", "マイナンバー", "ギフト"]
 
     # ① イオン北海道の巡回
     for url in AEON_URLS:
@@ -53,7 +57,7 @@ def main():
             for a in soup.find_all("a"):
                 text = a.get_text(strip=True)
                 href = a.get("href", "")
-                if any(k in text for k in aeon_keywords) and not any(ng in text for ng in exclude_words):
+                if any(k in text for k in aeon_keywords) and not any(ng in text for ng in EXCLUDE_WORDS):
                     if href.startswith("/"):
                         href = "https://es.aeon-hokkaido.jp" + href
                     entry = f"[イオン] {text} ({href})" if href else f"[イオン] {text}"
@@ -62,7 +66,7 @@ def main():
         except Exception as e:
             print(f"Aeon Error ({url}): {e}")
 
-    # ② あみあみ公式検索APIの巡回（予約受付中・取り寄せ・販売中のみ）
+    # ② あみあみ公式検索APIの巡回
     amiami_headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "X-User-Key": "amiami_dev",
@@ -86,7 +90,7 @@ def main():
             for item in data.get("items", []):
                 gname = item.get("gname", "")
                 gcode = item.get("gcode", "")
-                if gname and gcode:
+                if gname and gcode and not any(ng in gname for ng in EXCLUDE_WORDS):
                     item_url = f"https://www.amiami.jp/top/detail/detail?gcode={gcode}"
                     entry = f"[あみあみ] {gname} ({item_url})"
                     if entry not in items:
