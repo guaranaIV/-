@@ -1,9 +1,13 @@
 name: Aeon Hokkaido Card Monitor
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'
   workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'
+
+concurrency:
+  group: monitor-group
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -12,25 +16,18 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install requests beautifulsoup4
-
+      - run: pip install requests beautifulsoup4
       - name: Run watch script
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python watch.py
-
       - name: Save state
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add last_data.txt
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update cache" && git push)
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update cache" && git pull --rebase && git push)
