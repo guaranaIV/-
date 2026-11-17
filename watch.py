@@ -2,18 +2,25 @@ import os
 import requests
 from bs4 import BeautifulSoup
 
-# ▼ 1. イオン北海道eショップの監視URL
+# ▼ 1. イオン北海道eショップの監視URL（指定タイトルの検索一覧をすべて追加）
 AEON_URLS = [
     "https://es.aeon-hokkaido.jp/eshop/",
     "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%A6%E3%83%8B%E3%82%AA%E3%83%B3%E3%82%A2%E3%83%AA%E3%83%BC%E3%83%8A",
     "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3%E3%82%AB%E3%83%BC%E3%83%89",
     "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%AF%E3%83%B3%E3%83%94%E3%83%BC%E3%82%B9%E3%82%AB%E3%83%BC%E3%83%89",
     "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%95%E3%83%A5%E3%83%BC%E3%82%B8%E3%83%A7%E3%83%B3%E3%83%AF%E3%83%BC%E3%83%AB%E3%83%89",
+    "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%87%E3%82%B8%E3%83%A2%E3%83%B3%E3%82%AB%E3%83%BC%E3%83%89",
+    "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E9%81%8A%E6%88%AF%E7%8E%8B",
 ]
 
-# ▼ 2. あみあみ監視キーワード
+# ▼ 2. あみあみ監視キーワード（全6タイトル）
 AMIAMI_KEYWORDS = [
     "ユニオンアリーナ",
+    "ワンピースカード",
+    "ポケモンカード",
+    "フュージョンワールド",
+    "デジモンカード",
+    "遊戯王",
 ]
 
 # ▼ 3. ヨドバシカメラの監視URL（トレカカテゴリー）
@@ -21,7 +28,7 @@ YODOBASHI_URLS = [
     "https://www.yodobashi.com/category/141001/141651/141662/",
 ]
 
-# ▼ 4. 共通の除外ワード（スタートデッキは通知・アイドルマスターは除外）
+# ▼ 4. 共通の除外ワード（スタートデッキは通知・アイドルマスターやサプライは除外）
 EXCLUDE_WORDS = [
     "ウエハース", "グミ", "チョコ", "スナック", "Tシャツ", "タオル", "マイナンバー", "ギフト",
     "スリーブ", "プレイマット", "ストレージ", "デッキケース",
@@ -114,7 +121,6 @@ def main():
 
             for box in soup.select(".srcResultItem_block, .pListBlock"):
                 full_text = box.get_text(" ", strip=True)
-                # 売り切れ系文言が含まれていたらスキップ（＝買える商品だけ通す）
                 if any(so in full_text for so in sold_out_words):
                     continue
                 if any(ng in full_text for ng in EXCLUDE_WORDS):
@@ -125,7 +131,6 @@ def main():
                     href = a["href"]
                     if href.startswith("/"):
                         href = "https://www.yodobashi.com" + href
-                    # 商品名を取得
                     name_el = box.select_one(".pName, .js_sltGoodsName")
                     name = name_el.get_text(" ", strip=True) if name_el else a.get_text(" ", strip=True)
                     if name and "/product/" in href:
