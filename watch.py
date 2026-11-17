@@ -11,7 +11,7 @@ AEON_URLS = [
     "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%95%E3%83%A5%E3%83%BC%E3%82%B8%E3%83%A7%E3%83%B3%E3%83%AF%E3%83%BC%E3%83%AB%E3%83%89",
 ]
 
-# ▼ 2. あみあみ監視キーワード（増やしたい時はここに足す）
+# ▼ 2. あみあみ監視キーワード
 AMIAMI_KEYWORDS = [
     "ユニオンアリーナ",
 ]
@@ -28,7 +28,20 @@ def main():
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
     }
     items = []
-    keywords = ["ポケモン", "ポケカ", "ワンピース", "遊戯王", "ユニオンアリーナ", "カード", "BOX", "パック", "トレカ", "ドラゴンボール"]
+
+    # ▼ イオン用キーワード：「パック」「カード」「BOX」を外して作品名だけに限定
+    aeon_keywords = [
+        "ポケモンカード", "ポケカ", "拡張パック", "強化拡張パック", "ハイクラスパック",
+        "ワンピースカード", "ONE PIECEカード",
+        "遊戯王", "OCG",
+        "ユニオンアリーナ", "UNION ARENA",
+        "フュージョンワールド", "ドラゴンボールスーパーカード",
+        "ロルカナ", "LORCANA",
+        "デュエル・マスターズ", "デュエマ",
+        "デジモンカード",
+    ]
+    # ▼ 念のための除外ワード（食玩・アパレル・雑貨など）
+    exclude_words = ["ウエハース", "グミ", "チョコ", "スナック", "Tシャツ", "タオル", "マイナンバー", "ギフト"]
 
     # ① イオン北海道の巡回
     for url in AEON_URLS:
@@ -40,7 +53,7 @@ def main():
             for a in soup.find_all("a"):
                 text = a.get_text(strip=True)
                 href = a.get("href", "")
-                if any(k in text for k in keywords):
+                if any(k in text for k in aeon_keywords) and not any(ng in text for ng in exclude_words):
                     if href.startswith("/"):
                         href = "https://es.aeon-hokkaido.jp" + href
                     entry = f"[イオン] {text} ({href})" if href else f"[イオン] {text}"
