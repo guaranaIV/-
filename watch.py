@@ -3,7 +3,7 @@ import urllib.parse
 import requests
 from bs4 import BeautifulSoup
 
-# ▼ 監視する6タイトル（ここを変えれば各サイトの検索ワードも連動する）
+# ▼ 監視する6タイトル
 TARGET_TITLES = [
     "ユニオンアリーナ",
     "ワンピースカード",
@@ -34,11 +34,15 @@ POKECEN_URLS = [
     "https://www.pokemoncenter-online.com/?main_page=product_list&cat1=card",
 ]
 
-# ▼ 共通の除外ワード（スタートデッキは通知・アイドルマスターやサプライは除外）
+# ▼ 共通の除外ワード（サプライ・フィギュア・プラモ・ゲーム・雑貨・アイマスを徹底除外）
 EXCLUDE_WORDS = [
     "ウエハース", "グミ", "チョコ", "スナック", "Tシャツ", "タオル", "マイナンバー", "ギフト",
-    "スリーブ", "プレイマット", "ストレージ", "デッキケース", "ファイル", "バインダー",
-    "アイドルマスター",
+    "スリーブ", "デッキシールド", "プレイマット", "ラバーマット", "ストレージ",
+    "デッキケース", "カードボックス", "カードホルダー", "カードファイル",
+    "ファイル", "バインダー", "ダメカン", "コイン", "プロテクター",
+    "エネルギーカード", "ジャンボカード", "ディスプレイフレーム", "スタンド",
+    "フィギュア", "プラモデル", "ねんどろいど", "Switch", "ゲーム", "ステッカー", "アクリル",
+    "DESKTOP COLLECTION", "アイドルマスター",
 ]
 
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
@@ -87,7 +91,7 @@ def main():
         except Exception as e:
             print(f"Aeon Error: {e}")
 
-    # ② あみあみ公式APIの巡回
+    # ② あみあみ公式APIの巡回（CARD-コード＝純粋なトレカ商品のみに限定）
     amiami_headers = {
         "User-Agent": headers["User-Agent"],
         "X-User-Key": "amiami_dev",
@@ -113,7 +117,7 @@ def main():
             for item in res.json().get("items", []):
                 gname = item.get("gname", "")
                 gcode = item.get("gcode", "")
-                if gcode and is_valid_item(gname):
+                if gcode.startswith("CARD-") and is_valid_item(gname):
                     entry = f"[あみあみ] {gname} (https://www.amiami.jp/top/detail/detail?gcode={gcode})"
                     if entry not in items:
                         items.append(entry)
