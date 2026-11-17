@@ -50,7 +50,7 @@ CACHE_FILE = "last_data.txt"
 
 def send_discord(message):
     if DISCORD_WEBHOOK_URL:
-        requests.post(DISCORD_WEBHOOK_URL, json={"content": message})
+        requests.post(DISCORD_WEBHOOK_URL, json={"content": message}, timeout=5)
 
 def is_valid_item(text):
     return bool(text) and not any(ng in text for ng in EXCLUDE_WORDS)
@@ -76,7 +76,7 @@ def main():
     ]
     for url in AEON_URLS:
         try:
-            res = requests.get(url, headers=headers, timeout=12)
+            res = requests.get(url, headers=headers, timeout=5)
             res.encoding = res.apparent_encoding
             soup = BeautifulSoup(res.text, "html.parser")
             for a in soup.find_all("a"):
@@ -112,7 +112,7 @@ def main():
                     "pagecnt": 1,
                     "lang": "ja"
                 },
-                timeout=12
+                timeout=5
             )
             for item in res.json().get("items", []):
                 gname = item.get("gname", "")
@@ -127,7 +127,7 @@ def main():
     # ③ ヨドバシカメラの巡回
     for url in YODOBASHI_URLS:
         try:
-            res = requests.get(url, headers=headers, timeout=12)
+            res = requests.get(url, headers=headers, timeout=4)
             res.encoding = res.apparent_encoding
             soup = BeautifulSoup(res.text, "html.parser")
             for box in soup.select(".srcResultItem_block, .pListBlock"):
@@ -149,7 +149,7 @@ def main():
     # ④ ポケモンセンターオンラインの巡回
     for url in POKECEN_URLS:
         try:
-            res = requests.get(url, headers=headers, timeout=12)
+            res = requests.get(url, headers=headers, timeout=4)
             res.encoding = res.apparent_encoding
             soup = BeautifulSoup(res.text, "html.parser")
             for box in soup.select(".product_list li, .item_box"):
@@ -173,7 +173,7 @@ def main():
         try:
             q = urllib.parse.quote(kw)
             url = f"https://p-bandai.jp/search/?character=&q={q}&sale_status=1"
-            res = requests.get(url, headers=headers, timeout=12)
+            res = requests.get(url, headers=headers, timeout=4)
             res.encoding = res.apparent_encoding
             soup = BeautifulSoup(res.text, "html.parser")
             for a in soup.find_all("a", href=True):
@@ -192,7 +192,7 @@ def main():
         try:
             q = urllib.parse.quote(kw)
             url = f"https://www.biccamera.com/bc/category/?q={q}&sold_out_tp2=2"
-            res = requests.get(url, headers=headers, timeout=12)
+            res = requests.get(url, headers=headers, timeout=4)
             res.encoding = res.apparent_encoding
             soup = BeautifulSoup(res.text, "html.parser")
             for box in soup.select(".prod_box"):
@@ -215,7 +215,7 @@ def main():
         try:
             q = urllib.parse.quote(kw)
             url = f"https://www.yamada-denkiweb.com/search/{q}/?stock=1"
-            res = requests.get(url, headers=headers, timeout=12)
+            res = requests.get(url, headers=headers, timeout=4)
             res.encoding = res.apparent_encoding
             soup = BeautifulSoup(res.text, "html.parser")
             for a in soup.find_all("a", href=True):
@@ -234,7 +234,7 @@ def main():
         try:
             q = urllib.parse.quote(kw)
             url = f"https://books.rakuten.co.jp/search?sitem={q}&g=006&l-id=search-c-stock&x=0&y=0&v=2&s=1&e=0"
-            res = requests.get(url, headers=headers, timeout=12)
+            res = requests.get(url, headers=headers, timeout=4)
             res.encoding = res.apparent_encoding
             soup = BeautifulSoup(res.text, "html.parser")
             for box in soup.select(".rbcomp__item-list__item"):
