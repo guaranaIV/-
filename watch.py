@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 # ▼ 1. イオン北海道eショップの監視URL（そのまま残してあります）
 AEON_URLS = [
-    "https://es.aeon-hokkaido.jp/eshop/",
+    "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%88%E3%83%AC%E3%83%BC%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0%E3%82%AB%E3%83%BC%E3%83%89",
     "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%A6%E3%83%8B%E3%82%AA%E3%83%B3%E3%82%A2%E3%83%AA%E3%83%BC%E3%83%8A",
     "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3%E3%82%AB%E3%83%BC%E3%83%89",
     "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E3%83%AF%E3%83%B3%E3%83%94%E3%83%BC%E3%82%B9%E3%82%AB%E3%83%BC%E3%83%89",
@@ -28,7 +28,7 @@ def main():
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
     }
     items = []
-    keywords = ["ポケモン", "ポケカ", "ワンピース", "遊戯王", "ユニオンアリーナ", "カード", "BOX", "パック", "トレカ", "ドラゴンボール"]
+    keywords = ["ポケモン", "ポケカ", "ワンピース", "遊戯王", "ユニオンアリーナ", "カード", "BOX", "トレカ", "ドラゴンボール"]
 
     # ① イオン北海道の巡回
     for url in AEON_URLS:
