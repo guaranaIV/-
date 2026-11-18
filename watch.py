@@ -251,9 +251,33 @@ def main():
         except Exception as e:
             print(f"Rakuten Error ({kw}): {e}")
 
+    # ⑨ トイザらスオンラインの巡回
+    for kw in TARGET_TITLES:
+        try:
+            q = urllib.parse.quote(kw)
+            url = f"https://www.toysrus.co.jp/ja-jp/search/?q={q}&lang=ja_JP"
+            res = requests.get(url, headers=headers, timeout=4)
+            res.encoding = res.apparent_encoding
+            soup = BeautifulSoup(res.text, "html.parser")
+            for box in soup.select(".product-tile, .grid-tile"):
+                full_text = box.get_text(" ", strip=True)
+                if any(so in full_text for so in sold_out_words) or not is_valid_item(full_text):
+                    continue
+                a = box.select_one("a.link, .pdp-link a")
+                if a and a.get("href"):
+                    href = "https://www.toysrus.co.jp" + a["href"] if a["href"].startswith("/") else a["href"]
+                    name = a.get_text(" ", strip=True)
+                    if is_valid_item(name):
+                        entry = f"[トイザらス] {name} ({href})"
+                        if entry not in items:
+                            items.append(entry)
+        except Exception as e:
+            print(f"ToysRUs Error ({kw}): {e}")
+
     if not items:
         return
 
+    items.sort()
     current_data = "\n".join(items)
 
     old_data = ""
