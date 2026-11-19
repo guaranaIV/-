@@ -34,7 +34,7 @@ POKECEN_URLS = [
     "https://www.pokemoncenter-online.com/?main_page=product_list&cat1=card",
 ]
 
-# ▼ 共通の除外ワード（サプライ・フィギュア・プラモ・ゲーム・雑貨・アイマスを徹底除外）
+# ▼ 共通の除外ワード（サプライ・フィギュア・プラモ・ゲーム・雑貨・シングル・アイマスを徹底除外）
 EXCLUDE_WORDS = [
     "ウエハース", "グミ", "チョコ", "スナック", "Tシャツ", "タオル", "マイナンバー", "ギフト",
     "スリーブ", "デッキシールド", "プレイマット", "ラバーマット", "ストレージ",
@@ -42,7 +42,7 @@ EXCLUDE_WORDS = [
     "ファイル", "バインダー", "ダメカン", "コイン", "プロテクター",
     "エネルギーカード", "ジャンボカード", "ディスプレイフレーム", "スタンド",
     "フィギュア", "プラモデル", "ねんどろいど", "Switch", "ゲーム", "ステッカー", "アクリル",
-    "DESKTOP COLLECTION", "アイドルマスター",
+    "DESKTOP COLLECTION", "アイドルマスター", "シングル", "パラレル", "オリパ", "福袋",
 ]
 
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
@@ -61,7 +61,7 @@ def main():
         "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
     }
     items = []
-    sold_out_words = ["販売休止中", "予定数の販売を終了", "在庫なし", "販売終了", "お取り寄せ", "SOLD OUT", "在庫切れ", "受付終了"]
+    sold_out_words = ["販売休止中", "予定数の販売を終了", "在庫なし", "販売終了", "お取り寄せ", "SOLD OUT", "在庫切れ", "受付終了", "売り切れ"]
 
     # ① イオン北海道の巡回
     aeon_keywords = [
@@ -249,7 +249,7 @@ def main():
                         if entry not in items:
                             items.append(entry)
         except Exception as e:
-            print(f"Rakuten Error ({kw}): {e}")
+            print(f"Rakuten Books Error ({kw}): {e}")
 
     # ⑨ トイザらスオンラインの巡回
     for kw in TARGET_TITLES:
@@ -273,6 +273,28 @@ def main():
                             items.append(entry)
         except Exception as e:
             print(f"ToysRUs Error ({kw}): {e}")
+
+    # ⑩ 楽天市場の巡回（定価付近のBOX価格帯 3,500円〜8,500円・新着順・在庫あり）
+    for kw in TARGET_TITLES:
+        try:
+            q = urllib.parse.quote(kw)
+            url = f"https://search.rakuten.co.jp/search/mall/{q}/?minp=3500&maxp=8500&s=2&f=1"
+            res = requests.get(url, headers=headers, timeout=4)
+            res.encoding = res.apparent_encoding
+            soup = BeautifulSoup(res.text, "html.parser")
+            for box in soup.select(".searchresultitem"):
+                full_text = box.get_text(" ", strip=True)
+                if any(so in full_text for so in sold_out_words) or not is_valid_item(full_text):
+                    continue
+                a = box.select_one("h2 a, .title a")
+                if a and a.get("href"):
+                    name = a.get_text(" ", strip=True)
+                    if is_valid_item(name):
+                        entry = f"[楽天市場] {name} ({a['href']})"
+                        if entry not in items:
+                            items.append(entry)
+        except Exception as e:
+            print(f"Rakuten Ichiba Error ({kw}): {e}")
 
     if not items:
         return
