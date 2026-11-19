@@ -24,16 +24,6 @@ AEON_URLS = [
     "https://es.aeon-hokkaido.jp/eshop/item/list?kw=%E9%81%8A%E6%88%AF%E7%8E%8B",
 ]
 
-# ▼ 2. ヨドバシカメラの監視URL（トレカカテゴリー）
-YODOBASHI_URLS = [
-    "https://www.yodobashi.com/category/141001/141651/141662/",
-]
-
-# ▼ 3. ポケモンセンターオンラインの監視URL（カードゲーム一覧）
-POKECEN_URLS = [
-    "https://www.pokemoncenter-online.com/?main_page=product_list&cat1=card",
-]
-
 # ▼ 共通の除外ワード（サプライ・フィギュア・プラモ・ゲーム・雑貨・シングル・アイマスを徹底除外）
 EXCLUDE_WORDS = [
     "ウエハース", "グミ", "チョコ", "スナック", "Tシャツ", "タオル", "マイナンバー", "ギフト",
@@ -91,7 +81,7 @@ def main():
         except Exception as e:
             print(f"Aeon Error: {e}")
 
-    # ② あみあみ公式APIの巡回（CARD-コード＝純粋なトレカ商品のみに限定）
+    # ② あみあみ公式APIの巡回（CARD-コード限定・新着登録順・100件取得）
     amiami_headers = {
         "User-Agent": headers["User-Agent"],
         "X-User-Key": "amiami_dev",
@@ -108,7 +98,8 @@ def main():
                     "s_st_list_backorder_available": 1,
                     "s_st_list_newitem_available": 1,
                     "s_st_condition_flg": 1,
-                    "pagemax": 30,
+                    "s_sortkey": "regdate",
+                    "pagemax": 100,
                     "pagecnt": 1,
                     "lang": "ja"
                 },
@@ -124,112 +115,7 @@ def main():
         except Exception as e:
             print(f"AmiAmi Error ({kw}): {e}")
 
-    # ③ ヨドバシカメラの巡回
-    for url in YODOBASHI_URLS:
-        try:
-            res = requests.get(url, headers=headers, timeout=4)
-            res.encoding = res.apparent_encoding
-            soup = BeautifulSoup(res.text, "html.parser")
-            for box in soup.select(".srcResultItem_block, .pListBlock"):
-                full_text = box.get_text(" ", strip=True)
-                if any(so in full_text for so in sold_out_words) or not is_valid_item(full_text):
-                    continue
-                a = box.find("a", href=True)
-                if a and "/product/" in a["href"]:
-                    href = "https://www.yodobashi.com" + a["href"] if a["href"].startswith("/") else a["href"]
-                    name_el = box.select_one(".pName, .js_sltGoodsName")
-                    name = name_el.get_text(" ", strip=True) if name_el else a.get_text(" ", strip=True)
-                    if is_valid_item(name):
-                        entry = f"[ヨドバシ] {name} ({href})"
-                        if entry not in items:
-                            items.append(entry)
-        except Exception as e:
-            print(f"Yodobashi Error: {e}")
-
-    # ④ ポケモンセンターオンラインの巡回
-    for url in POKECEN_URLS:
-        try:
-            res = requests.get(url, headers=headers, timeout=4)
-            res.encoding = res.apparent_encoding
-            soup = BeautifulSoup(res.text, "html.parser")
-            for box in soup.select(".product_list li, .item_box"):
-                full_text = box.get_text(" ", strip=True)
-                if any(so in full_text for so in sold_out_words) or not is_valid_item(full_text):
-                    continue
-                a = box.find("a", href=True)
-                if a:
-                    href = "https://www.pokemoncenter-online.com" + a["href"] if a["href"].startswith("/") else a["href"]
-                    name = a.get_text(" ", strip=True) or (a.find("img").get("alt", "") if a.find("img") else "")
-                    if is_valid_item(name):
-                        entry = f"[ポケセン] {name} ({href})"
-                        if entry not in items:
-                            items.append(entry)
-        except Exception as e:
-            print(f"Pokecen Error: {e}")
-
-    # ⑤ プレミアムバンダイの巡回（トレカ関連ワード必須）
-    pbandai_must = ["カード", "ブースター", "スタートデッキ", "BOX", "パック"]
-    for kw in TARGET_TITLES:
-        try:
-            q = urllib.parse.quote(kw)
-            url = f"https://p-bandai.jp/search/?character=&q={q}&sale_status=1"
-            res = requests.get(url, headers=headers, timeout=4)
-            res.encoding = res.apparent_encoding
-            soup = BeautifulSoup(res.text, "html.parser")
-            for a in soup.find_all("a", href=True):
-                if "/item/item-" in a["href"]:
-                    text = a.get_text(" ", strip=True)
-                    if any(m in text for m in pbandai_must) and is_valid_item(text):
-                        href = "https://p-bandai.jp" + a["href"] if a["href"].startswith("/") else a["href"]
-                        entry = f"[プレバン] {text} ({href})"
-                        if entry not in items:
-                            items.append(entry)
-        except Exception as e:
-            print(f"P-Bandai Error ({kw}): {e}")
-
-    # ⑥ ビックカメラ.comの巡回
-    for kw in TARGET_TITLES:
-        try:
-            q = urllib.parse.quote(kw)
-            url = f"https://www.biccamera.com/bc/category/?q={q}&sold_out_tp2=2"
-            res = requests.get(url, headers=headers, timeout=4)
-            res.encoding = res.apparent_encoding
-            soup = BeautifulSoup(res.text, "html.parser")
-            for box in soup.select(".prod_box"):
-                full_text = box.get_text(" ", strip=True)
-                if any(so in full_text for so in sold_out_words) or not is_valid_item(full_text):
-                    continue
-                a = box.select_one("a.bcs_item, .bcs_title a")
-                if a and a.get("href"):
-                    href = "https://www.biccamera.com" + a["href"] if a["href"].startswith("/") else a["href"]
-                    name = a.get_text(" ", strip=True)
-                    if is_valid_item(name):
-                        entry = f"[ビック] {name} ({href})"
-                        if entry not in items:
-                            items.append(entry)
-        except Exception as e:
-            print(f"BicCamera Error ({kw}): {e}")
-
-    # ⑦ ヤマダウェブコムの巡回
-    for kw in TARGET_TITLES:
-        try:
-            q = urllib.parse.quote(kw)
-            url = f"https://www.yamada-denkiweb.com/search/{q}/?stock=1"
-            res = requests.get(url, headers=headers, timeout=4)
-            res.encoding = res.apparent_encoding
-            soup = BeautifulSoup(res.text, "html.parser")
-            for a in soup.find_all("a", href=True):
-                if "/product/" in a["href"] or "/item/" in a["href"]:
-                    text = a.get_text(" ", strip=True)
-                    if kw in text and is_valid_item(text):
-                        href = "https://www.yamada-denkiweb.com" + a["href"] if a["href"].startswith("/") else a["href"]
-                        entry = f"[ヤマダ] {text} ({href})"
-                        if entry not in items:
-                            items.append(entry)
-        except Exception as e:
-            print(f"Yamada Error ({kw}): {e}")
-
-    # ⑧ 楽天ブックスの巡回（在庫あり・予約受付中のみ）
+    # ③ 楽天ブックスの巡回（在庫あり・予約受付中のみ）
     for kw in TARGET_TITLES:
         try:
             q = urllib.parse.quote(kw)
@@ -250,51 +136,6 @@ def main():
                             items.append(entry)
         except Exception as e:
             print(f"Rakuten Books Error ({kw}): {e}")
-
-    # ⑨ トイザらスオンラインの巡回
-    for kw in TARGET_TITLES:
-        try:
-            q = urllib.parse.quote(kw)
-            url = f"https://www.toysrus.co.jp/ja-jp/search/?q={q}&lang=ja_JP"
-            res = requests.get(url, headers=headers, timeout=4)
-            res.encoding = res.apparent_encoding
-            soup = BeautifulSoup(res.text, "html.parser")
-            for box in soup.select(".product-tile, .grid-tile"):
-                full_text = box.get_text(" ", strip=True)
-                if any(so in full_text for so in sold_out_words) or not is_valid_item(full_text):
-                    continue
-                a = box.select_one("a.link, .pdp-link a")
-                if a and a.get("href"):
-                    href = "https://www.toysrus.co.jp" + a["href"] if a["href"].startswith("/") else a["href"]
-                    name = a.get_text(" ", strip=True)
-                    if is_valid_item(name):
-                        entry = f"[トイザらス] {name} ({href})"
-                        if entry not in items:
-                            items.append(entry)
-        except Exception as e:
-            print(f"ToysRUs Error ({kw}): {e}")
-
-    # ⑩ 楽天市場の巡回（定価付近のBOX価格帯 3,500円〜8,500円・新着順・在庫あり）
-    for kw in TARGET_TITLES:
-        try:
-            q = urllib.parse.quote(kw)
-            url = f"https://search.rakuten.co.jp/search/mall/{q}/?minp=3500&maxp=8500&s=2&f=1"
-            res = requests.get(url, headers=headers, timeout=4)
-            res.encoding = res.apparent_encoding
-            soup = BeautifulSoup(res.text, "html.parser")
-            for box in soup.select(".searchresultitem"):
-                full_text = box.get_text(" ", strip=True)
-                if any(so in full_text for so in sold_out_words) or not is_valid_item(full_text):
-                    continue
-                a = box.select_one("h2 a, .title a")
-                if a and a.get("href"):
-                    name = a.get_text(" ", strip=True)
-                    if is_valid_item(name):
-                        entry = f"[楽天市場] {name} ({a['href']})"
-                        if entry not in items:
-                            items.append(entry)
-        except Exception as e:
-            print(f"Rakuten Ichiba Error ({kw}): {e}")
 
     if not items:
         return
